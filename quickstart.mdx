@@ -20,13 +20,15 @@ This guide walks you through getting both running on your machine so you can dev
 
 <Steps>
   <Step title="Clone the repository">
-    Grab the source code and move into the project root:
+    Grab the source code, and go into `dev` branch for local setup
 
     ```bash
-    git clone https://github.com/viet2811/ocipe.git && cd ocipe
+    git clone https://github.com/viet2811/ocipe.git 
+    cd ocipe
+    git checkout dev
     ```
   </Step>
-  <Step title="Set up the backend">
+  <Step title="Set up the backend env">
     Create a `.env` file in the `backend` directory with the following variables:
 
     ```bash
@@ -46,7 +48,7 @@ This guide walks you through getting both running on your machine so you can dev
   <Step title="Run Docker Compose">
     Make sure to open Docker Desktop before the executing below.
 
-    Move back to ocipe folder, then run the following command: 
+    Move back to ocipe folder, then run the following command:
 
     ```ts
     docker-compose up --build
