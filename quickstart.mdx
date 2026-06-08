@@ -4,13 +4,16 @@ sidebarTitle: "Quickstart"
 description: "Set up Ocipe's Django backend and React frontend for local development, configure your environment, and open the app at localhost:5173."
 ---
 
-Ocipe is made up of two independent services: a **Django 5 + Django REST Framework** backend that serves the API, and a **React 19 + TypeScript + Vite** frontend that consumes it. This guide walks you through getting both running on your machine so you can develop or self-host Ocipe locally.
+Ocipe is made up of two independent services: a **Django 5 \+ Django REST Framework** backend that serves the API and connect to a **PostgreSQL 15** database, and a **React 19 \+ TypeScript \+ Vite** frontend that consumes it. All the services are setup in one **Docker Compose** file, make it easy to run and develop locally.
+
+This guide walks you through getting both running on your machine so you can develop or self-host Ocipe locally.
 
 <Note>
   **Prerequisites before you begin:**
+
   - Python 3.11 or higher
   - Node.js 18 or higher
-  - A running PostgreSQL database (local or hosted)
+  - Docker Desktop
   - A [Google Gemini API key](https://aistudio.google.com/app/apikey) (free tier is sufficient for AI autofill)
   - A Render account (or any other host) if you plan to deploy rather than just run locally
 </Note>
@@ -23,18 +26,8 @@ Ocipe is made up of two independent services: a **Django 5 + Django REST Framewo
     git clone https://github.com/viet2811/ocipe.git && cd ocipe
     ```
   </Step>
-
   <Step title="Set up the backend">
-    Move into the `backend` directory, create an isolated Python environment, and install all dependencies:
-
-    ```bash
-    cd backend
-    python -m venv .venv
-    source .venv/bin/activate        # Windows: .venv\Scripts\activate
-    pip install -r requirements.txt
-    ```
-
-    Next, create a `.env` file in the `backend` directory with the following variables:
+    Create a `.env` file in the `backend` directory with the following variables:
 
     ```bash
     # backend/.env
@@ -49,49 +42,18 @@ Ocipe is made up of two independent services: a **Django 5 + Django REST Framewo
     - **`DJANGO_SECRET`** — a long, random string used by Django for cryptographic signing. Generate one with `python -c "import secrets; print(secrets.token_urlsafe(50))"`.
     - **`POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_HOST`** — the connection details for your PostgreSQL database. All four are required; `POSTGRES_HOST` is typically `localhost` for local development.
     - **`GEMINI_API_KEY`** — your Google Gemini API key, used by the AI autofill feature to parse recipe URLs. Get a free key from [Google AI Studio](https://aistudio.google.com/app/apikey).
-
-    Apply database migrations, then start the development server:
-
-    ```bash
-    python manage.py migrate
-    python manage.py runserver
-    ```
-
-    The backend API will be available at `http://localhost:8000/api`.
   </Step>
+  <Step title="Run Docker Compose">
+    Make sure to open Docker Desktop before the executing below.
 
-  <Step title="Set up the frontend">
-    Open a new terminal, move into the `frontend` directory, and install Node dependencies:
-
-    ```bash
-    cd frontend
-    npm install
-    ```
-
-    The frontend's API base URL is hardcoded in `src/api/axios.ts`:
+    Move back to ocipe folder, then run the following command: 
 
     ```ts
-    // src/api/axios.ts
-    export const axiosInstance = axios.create({
-      baseURL: "https://ocipe.onrender.com/api",
-      ...
-    });
+    docker-compose up --build
     ```
 
-    The app does **not** read a `VITE_API_BASE_URL` environment variable — there is no `.env` file to create for the frontend. For local development you have two options:
-
-    - **Use the hosted API (recommended for front-end-only work):** Leave `axios.ts` unchanged. Your local frontend will talk to the production backend at `https://ocipe.onrender.com/api`, which works out of the box.
-    - **Point to your local backend:** Open `src/api/axios.ts` and change the `baseURL` to `http://localhost:8000/api`. Remember to revert or keep it out of version control before deploying.
-
-    Start the Vite development server:
-
-    ```bash
-    npm run dev
-    ```
-
-    The frontend will be available at `http://localhost:5173`.
+    After build and all services run successfully, the frontend will be available at `http://localhost:5173`.
   </Step>
-
   <Step title="Open the app">
     Navigate to [http://localhost:5173](http://localhost:5173) in your browser. Register a new account, and you're ready to start adding recipes, stocking your fridge, and planning your groceries.
   </Step>

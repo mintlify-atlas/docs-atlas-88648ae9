@@ -4,7 +4,7 @@ sidebarTitle: "Introduction"
 description: "Ocipe is a personal recipe manager and grocery planner. Organize recipes, track your fridge, and generate smart shopping lists automatically."
 ---
 
-Ocipe is a digital personal cookbook with a built-in grocery planner, built to make the whole cooking-and-shopping process genuinely easier. If you've ever found yourself scrolling through 50+ saved recipes scattered across browser bookmarks, food apps, screenshots, and group chats — only to give up and order takeout — Ocipe was built for you. Everything lives in one place: your recipes, your fridge inventory, and your weekly grocery plan, all talking to each other so nothing falls through the cracks.
+Ocipe is a digital personal cookbook with a built-in grocery planner, built to make the whole cooking-and-shopping process genuinely easier. If you've ever found yourself scrolling through 50\+ saved recipes scattered across browser bookmarks, food apps, screenshots, and group chats — only to give up and order takeout — Ocipe was built for you. Everything lives in one place: your recipes, your fridge inventory, and your weekly grocery plan, all talking to each other so nothing falls through the cracks.
 
 <Tip>
   Ocipe is live and free to use at [https://ocipe.vercel.app](https://ocipe.vercel.app) — no install or setup required.
@@ -14,12 +14,15 @@ Ocipe is a digital personal cookbook with a built-in grocery planner, built to m
   <Card title="Cookbook" icon="book-open" href="/features/recipes">
     Add, search, and manage all your personal recipes in one place.
   </Card>
+
   <Card title="Fridge" icon="refrigerator" href="/features/fridge">
     Track what ingredients you currently have on hand.
   </Card>
+
   <Card title="Grocery Planner" icon="cart-shopping" href="/features/grocery-planner">
     Pick recipes for the week and get an automatic shopping list.
   </Card>
+
   <Card title="API Reference" icon="code" href="/api/authentication">
     Explore the Django REST Framework API powering Ocipe.
   </Card>
@@ -32,16 +35,16 @@ Your cookbook is where every recipe lives. The idea is simple: write your recipe
 Each recipe stores exactly the fields you need and nothing you don't:
 
 | Field | Description |
-|---|---|
+| --- | --- |
 | `name` | The recipe's name. |
-| `meat_type` | A free-form category field — use it for meat type, meal time (breakfast/lunch/dinner), cuisine, or anything else that helps you sort and search. |
+| `category` | A free-form category field — use it for meat type, meal time (breakfast/lunch/dinner), cuisine, or anything else that helps you sort and search. |
 | `longevity` | How long the recipe lasts — interpret this as portions or days, whichever makes sense for that dish. |
 | `frequency` | One of `weekday`, `weekend`, or `rarely`. `weekday` means it's quick enough for a busy evening; `weekend` means it takes more time and effort; `rarely` means it's a treat or a special occasion dish. |
 | `note` | Your personal notes and cooking instructions (optional). |
 | `state` | Either `active` (not yet planned this cycle) or `used` (already planned). Helps you avoid cooking the same thing twice in a row. |
 | `ingredients` | A list of ingredients, each with a `name` and an optional `quantity`. Quantity is intentionally free-form — write `"2 tbsp"`, `"a handful"`, or leave it blank entirely. |
 
-Recipes aren't just stored — they're searchable. Can't remember the name? Filter by `meat_type` or search by ingredient. Don't want to buy anything new? Find every recipe you can cook with what's already in your fridge.
+Recipes aren't just stored — they're searchable. Can't remember the name? Filter by `catogory` or search by ingredient. Don't want to buy anything new? Find every recipe you can cook with what's already in your fridge.
 
 ## Grocery Planner
 
@@ -59,18 +62,23 @@ You can also browse your **previous plans** at any time — handy if you want to
   <Card title="AI Autofill with Gemini" icon="wand-magic-sparkles">
     Paste any recipe URL and Google Gemini automatically fills in the name, category, ingredients, and notes — no manual typing required.
   </Card>
+
   <Card title="Export & Import recipes" icon="arrow-right-arrow-left">
     Export your full recipe list and share it with anyone. Import a friend's export to instantly populate your own cookbook.
   </Card>
+
   <Card title="Fridge inventory" icon="refrigerator">
     Keep a live record of what's in your fridge, organized by ingredient group. Used by both the recipe search and the grocery planner for accurate results.
   </Card>
+
   <Card title="Smart grocery list" icon="list-check">
     Generated automatically from your planned recipes minus whatever is already in your fridge. No duplicate items, no guesswork.
   </Card>
+
   <Card title="Search by ingredients" icon="magnifying-glass">
     Type a few ingredients (comma-separated) and instantly see the closest recipes you can cook — great for using up what's about to go off.
   </Card>
+
   <Card title="Recipe status tracking" icon="circle-check">
     The `state` field (`active` / `used`) lets you track which recipes have been planned recently, so you always know what's fresh in rotation.
   </Card>
