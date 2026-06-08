@@ -1,0 +1,104 @@
+{
+  "projectType": "saas",
+  "projectName": "Ocipe",
+  "projectDescription": "A digital personal cookbook web app for organizing recipes and planning grocery shopping with an AI-powered autofill feature.",
+  "theme": "almond",
+  "primaryColor": "#e86a2f",
+  "lightColor": "#fef3ec",
+  "darkColor": "#7c2d0e",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Guide",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/recipes",
+              "features/fridge",
+              "features/grocery-planner"
+            ]
+          },
+          {
+            "group": "Setup & Deployment",
+            "pages": [
+              "setup/overview",
+              "setup/backend",
+              "setup/frontend",
+              "setup/environment"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Authentication",
+            "pages": [
+              "api/authentication"
+            ]
+          },
+          {
+            "group": "Endpoints",
+            "pages": [
+              "api/recipes",
+              "api/fridge",
+              "api/grocery"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Personal recipe management with search by name, category, or ingredients",
+    "Fridge inventory tracker for organized ingredient storage",
+    "Grocery planner that auto-generates shopping lists from selected recipes",
+    "AI autofill via Google Gemini — paste a recipe URL to populate the form",
+    "Recipe export/import for sharing recipe libraries between users",
+    "Randomizer tool to help choose recipes when indecisive",
+    "Previous grocery plans history for reference and reuse",
+    "JWT-based authentication with HTTP-only cookie refresh tokens",
+    "Dark/light theme support",
+    "Drag-and-drop ingredient grouping and recipe board ordering"
+  ],
+  "publicApiSurface": [
+    "POST /api/user/register/",
+    "POST /api/user/token/",
+    "POST /api/user/token/refresh/",
+    "POST /api/user/logout/",
+    "GET /api/recipes/",
+    "POST /api/recipes/",
+    "DELETE /api/recipes/",
+    "GET /api/recipes/<id>/",
+    "PUT /api/recipes/<id>/",
+    "DELETE /api/recipes/<id>/",
+    "POST /api/recipes/bulk/",
+    "GET /api/recipes/stats/",
+    "POST /api/recipes/genai/",
+    "POST /api/recipes/refresh/",
+    "GET /api/fridge/",
+    "POST /api/fridge/ingredient/",
+    "PUT /api/fridge/ingredient/<id>/",
+    "DELETE /api/fridge/ingredient/<id>/",
+    "PUT /api/fridge/ingredient/group/<group_name>",
+    "DELETE /api/fridge/ingredient/group/<group_name>",
+    "POST /api/grocery/",
+    "GET /api/grocery/list/",
+    "POST /api/grocery/list/",
+    "DELETE /api/grocery/list/",
+    "PATCH /api/grocery/list/<id>/",
+    "DELETE /api/grocery/list/<id>/",
+    "GET /api/grocery/history/",
+    "DELETE /api/grocery/history/",
+    "GET /api/grocery/history/recent/"
+  ]
+}

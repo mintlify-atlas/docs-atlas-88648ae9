@@ -1,0 +1,166 @@
+---
+title: "Authenticate with the Ocipe REST API"
+sidebarTitle: "Authentication"
+description: "Ocipe uses JWT authentication. Obtain an access token via POST /api/user/token/, then include it as a Bearer token in all protected requests."
+---
+
+Ocipe's API uses JSON Web Tokens (JWT) via [SimpleJWT](https://django-rest-framework-simplejwt.readthedocs.io/). Every protected endpoint requires a valid access token passed in the `Authorization` header. Refresh tokens are stored in an HTTP-only cookie and automatically rotated — your client never sees the refresh token in a response body, and it is never exposed to JavaScript running on the page.
+
+---
+
+## Register a new account
+
+`POST /api/user/register/`
+
+Creates a new user account. On success, the server also automatically provisions a personal **Fridge** and a **GroceryList** for the new user — no additional setup is required.
+
+**Request body**
+
+```json
+{
+  "username": "string",
+  "password": "string"
+}
+```
+
+**Success response — `201 Created`**
+
+```json
+{
+  "message": "User registered successfully"
+}
+```
+
+**Error response — `400 Bad Request`** (username already taken)
+
+```json
+{
+  "username": "Username already exists"
+}
+```
+
+**Example**
+
+```bash
+curl -s -X POST https://ocipe.onrender.com/api/user/register/ \
+  -H "Content-Type: application/json" \
+  -d '{"username": "alice", "password": "s3cur3p@ss!"}'
+```
+
+---
+
+## Obtain tokens
+
+`POST /api/user/token/`
+
+Validates credentials and returns a short-lived **access token** in the response body. The **refresh token** is set as an HTTP-only cookie named `refresh_token` and is never included in the JSON body.
+
+**Request body**
+
+```json
+{
+  "username": "string",
+  "password": "string"
+}
+```
+
+**Success response — `200 OK`**
+
+```json
+{
+  "access": "<access_token>"
+}
+```
+
+**Example** — save the access token to a shell variable and persist the cookie to a file for later use:
+
+```bash
+# Obtain tokens; store the refresh cookie in cookies.txt
+ACCESS=$(curl -s -c cookies.txt -X POST https://ocipe.onrender.com/api/user/token/ \
+  -H "Content-Type: application/json" \
+  -d '{"username": "alice", "password": "s3cur3p@ss!"}' \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['access'])")
+
+echo "Access token: $ACCESS"
+```
+
+<Note>
+  The refresh token cookie is configured with `httponly=True`, `secure=True`, and `SameSite=None`, with a `max_age` of **30 days** (2,592,000 seconds). Because `SameSite=None` requires `Secure`, the cookie is only transmitted over HTTPS.
+</Note>
+
+---
+
+## Using the access token
+
+Include the access token as a **Bearer** token in the `Authorization` header of every request to a protected endpoint.
+
+```
+Authorization: Bearer <access_token>
+```
+
+**Example** — list all recipes for the authenticated user:
+
+```bash
+curl -s https://ocipe.onrender.com/api/recipes/ \
+  -H "Authorization: Bearer $ACCESS"
+```
+
+---
+
+## Refresh the access token
+
+`POST /api/user/token/refresh/`
+
+Issues a new access token. The server first looks for the refresh token in the `refresh_token` HTTP-only cookie. If the cookie is absent, you may supply the token explicitly in the request body.
+
+**Request body** *(optional — only needed if the cookie is not present)*
+
+```json
+{
+  "refresh": "<refresh_token>"
+}
+```
+
+**Success response — `200 OK`**
+
+```json
+{
+  "access": "<new_access_token>"
+}
+```
+
+**Example** — use the cookie saved earlier to obtain a fresh access token:
+
+```bash
+ACCESS=$(curl -s -b cookies.txt -X POST https://ocipe.onrender.com/api/user/token/refresh/ \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['access'])")
+
+echo "New access token: $ACCESS"
+```
+
+---
+
+## Logout
+
+`POST /api/user/logout/`
+
+Clears the `refresh_token` cookie by overwriting it with an empty string. After a successful logout, subsequent calls to `/api/user/token/refresh/` will fail because the cookie no longer contains a valid token.
+
+**Example**
+
+```bash
+curl -s -b cookies.txt -X POST https://ocipe.onrender.com/api/user/logout/
+```
+
+<Warning>
+  Access tokens are **not revocable** server-side. Logout only clears the refresh token cookie — any access token that was already issued remains valid until it expires (5 minutes from issuance). Treat access tokens as secrets and keep their lifetime short.
+</Warning>
+
+---
+
+## Token lifecycle
+
+| Token | Lifetime | Location | How to use |
+|---|---|---|---|
+| Access token | **5 minutes** | JSON response body (`"access"`) | Pass as `Authorization: Bearer <token>` on every protected request |
+| Refresh token | **30 days** | HTTP-only cookie (`refresh_token`) | Sent automatically by the browser, or via `-b cookies.txt` in curl; used only to obtain new access tokens from `POST /api/user/token/refresh/` |

@@ -1,0 +1,105 @@
+---
+title: "Grocery Planner: Auto-Generate Your Shopping List"
+sidebarTitle: "Grocery Planner"
+description: "Ocipe's grocery planner lets you pick recipes for the week and instantly generates a shopping list, subtracting ingredients already in your fridge."
+---
+
+The grocery planner is the core workflow of Ocipe — select the recipes you want to cook, click Generate, and instantly receive a shopping list that already accounts for everything in your fridge. No manual cross-referencing, no re-reading every recipe card.
+
+## End-to-End Workflow
+
+<Steps>
+  <Step title="Update your fridge">
+    Before generating a list, make sure your [Fridge inventory](/features/fridge) reflects what you currently have at home. Ocipe uses the fridge to subtract already-owned ingredients from the grocery list — stale inventory means an inaccurate list.
+  </Step>
+
+  <Step title="Select recipes">
+    The grocery planner page shows the full recipe table on the left — with all the same search and sort capabilities available on the [Recipes page](/features/recipes). Check the recipes you want to cook this week.
+
+    Selected recipes appear on the **Recipe Board** panel on the right side of the screen. The board shows a running total of `longevity` values so you can see how many days or portions your current selection covers at a glance.
+
+    <Tip>
+      Use the longevity counter on the Recipe Board to plan for the right number of days or portions before generating. Aim for a total that covers your week before moving on.
+    </Tip>
+
+    To set a preferred cooking order, drag the **handle icon (⋮⋮)** on each recipe card in the Recipe Board to reorder the list.
+  </Step>
+
+  <Step title="Use the randomizer (optional)">
+    Not sure what to cook? Click the **Random** button to let Ocipe pick a recipe for you. The randomizer has three configurable settings:
+
+    | Setting | Default | Description |
+    |---|---|---|
+    | Only active recipes | On | Only randomize from recipes whose `state` is `active` (not yet planned this cycle). |
+    | Random from current selection | On | When you have recipes checked in the table, randomize only within that selection. |
+    | Remove after randomizing | Off | After a recipe is selected by the randomizer, uncheck it from the table selection so it won't be picked again. |
+
+    Disable any of these settings if you want broader or different random behaviour.
+  </Step>
+
+  <Step title="Check previous plans (optional)">
+    Click **Previous Plans** to view your planning history. Each history entry shows the recipe IDs from a past generation session and the date it was created. Use this to avoid repeating the same meals you had recently, or to reuse a past combination you enjoyed.
+  </Step>
+
+  <Step title="Generate the grocery list">
+    Click **Generate**. Ocipe performs the following in a single API call to `POST /grocery/`:
+
+    1. Aggregates all ingredients across your selected recipes, including repeated recipes (a recipe selected twice contributes its ingredients twice).
+    2. Combines quantities for the same ingredient across multiple recipes using string concatenation (e.g. `"200g + 150g"`).
+    3. Cross-references every aggregated ingredient against your fridge inventory.
+    4. Returns two lists: **`grocery_list`** (items not in your fridge — what to buy) and **`others`** (items already in your fridge — what you have).
+
+    This happens instantly; there is no waiting for an external service.
+  </Step>
+
+  <Step title="Review and save the list">
+    The result page shows your grocery list by default — ingredient names only, for the cleanest possible shopping view. Two optional display modes give you more detail:
+
+    - **Show aggregated quantity** — reveals the combined quantity string next to each ingredient name.
+    - **Show full details** — shows both the grocery list and the fridge items (`others`) with their quantities. Useful when you have *some* of an ingredient but need more (e.g. you have 4 eggs but a recipe needs 6).
+
+    Once you are satisfied, either:
+    - **Copy to clipboard** — paste the list into your notes app or a messaging app.
+    - **Save to app list** — saves the list to the built-in grocery checklist, accessible from the Home page.
+  </Step>
+</Steps>
+
+---
+
+## Understanding the Result
+
+The generation endpoint returns a JSON object with two keys:
+
+```json
+{
+  "grocery_list": [
+    { "name": "chicken thighs", "quantity": "500g" },
+    { "name": "soy sauce", "quantity": "2 tbsp + 1 tbsp" }
+  ],
+  "others": [
+    { "name": "garlic", "quantity": "3 cloves" },
+    { "name": "olive oil", "quantity": "1 tbsp" }
+  ]
+}
+```
+
+| Key | Description |
+|---|---|
+| `grocery_list` | Ingredients needed for your selected recipes that are **not** in your fridge. These are the items to buy. |
+| `others` | Ingredients needed for your selected recipes that **are** already in your fridge. Shown in "full details" mode as a reference. |
+
+**Saved list:** When you save the list to the app, items are stored as a `GroceryList` with individual `GroceryListItem` records. The saved list appears on the **Home page** alongside a quick-access view of your most recent plan. You can check off items as you shop and delete items or clear the list entirely when done.
+
+**History:** Every time you click Generate, the selected recipe IDs are automatically recorded in `History` with a timestamp. You can view the full history from the grocery planner and clear it at any time.
+
+---
+
+## Recipe State After Generating
+
+Generating a grocery list marks all selected recipes' `state` as `used`. This is intentional — it signals that those meals are already planned for the current cycle, so the randomizer and the active-recipe filter can skip them.
+
+At the start of your next planning cycle (e.g. next week), go to the **Recipes page** and click **Refresh All** to reset every recipe's `state` back to `active`. This prepares your cookbook for a fresh round of planning.
+
+<Note>
+  Because ingredient quantities in Ocipe are free-form text, combined quantities are produced by **string concatenation** — not arithmetic. If chicken thighs appears in two recipes with quantities `"300g"` and `"200g"`, the aggregated quantity shown is `"300g + 200g"`. You will need to add those numbers yourself before shopping.
+</Note>

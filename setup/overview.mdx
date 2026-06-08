@@ -1,0 +1,83 @@
+---
+title: "Ocipe Architecture and Deployment Overview"
+sidebarTitle: "Overview"
+description: "Ocipe has a Django REST API backend and a React/Vite frontend. Learn how the two services connect and the deployment options available."
+---
+
+Ocipe is a full-stack application composed of two independently deployed services: a Django REST Framework API backend and a React 19 + Vite frontend. Understanding how these services relate to one another is helpful before working through the individual setup guides.
+
+## Architecture
+
+The frontend communicates with the backend exclusively through REST API calls. Axios is used on the client side with a configured base URL pointing to the Django API. Authentication is handled with JSON Web Tokens (JWT) via SimpleJWT:
+
+- The **access token** is returned in the response body and stored by the frontend client. It expires after **5 minutes**.
+- The **refresh token** is set in an **HTTP-only cookie** (`refresh_token`) with a 30-day expiry, `Secure=True`, and `SameSite=None` to support cross-origin requests between Vercel and Render.
+- CORS is configured on the backend to allow credentials and to accept requests only from the frontend origin (`https://ocipe.vercel.app`).
+
+```
+┌─────────────────────────────────────┐
+│         Browser (User)              │
+│                                     │
+│  React 19 + Vite (Vercel)           │
+│  https://ocipe.vercel.app           │
+│                                     │
+│  Axios ──── REST API calls ────────►│
+│  (access token in Authorization     │
+│   header; refresh token in          │
+│   HTTP-only cookie)                 │
+└──────────────────┬──────────────────┘
+                   │ HTTPS
+                   ▼
+┌─────────────────────────────────────┐
+│  Django 5.2 + DRF (Render)          │
+│  https://ocipe.onrender.com/api     │
+│                                     │
+│  ┌──────────┐  ┌──────────────────┐ │
+│  │ SimpleJWT│  │  django-cors-    │ │
+│  │  Auth    │  │  headers (CORS)  │ │
+│  └──────────┘  └──────────────────┘ │
+│                                     │
+│  PostgreSQL database                │
+│  Google Gemini AI (recipes)         │
+└─────────────────────────────────────┘
+```
+
+## Services
+
+**Backend**
+
+- Framework: Django 5.2.1 with Django REST Framework 3.16.0
+- Auth: SimpleJWT 5.5.0 (JWT access + refresh tokens)
+- Database: PostgreSQL (via `psycopg2-binary`)
+- AI integration: Google Gemini (`google-generativeai`)
+- Runs on port **8000** in development
+- Production: deployed on **Render** at `https://ocipe.onrender.com/api`
+
+**Frontend**
+
+- Framework: React 19 + TypeScript, bundled with Vite 6
+- API client: Axios 1.9 with TanStack Query for caching and server-state management
+- UI: Tailwind CSS v4, shadcn/ui (Radix UI primitives)
+- Runs on port **5173** in development
+- Production: deployed on **Vercel** at `https://ocipe.vercel.app`
+
+## Deployment options
+
+<CardGroup cols={2}>
+  <Card title="Backend" href="/setup/backend" icon="server">
+    Deploy the Django backend on Render, Railway, or any VPS with PostgreSQL and Gunicorn.
+  </Card>
+  <Card title="Frontend" href="/setup/frontend" icon="globe">
+    Build and deploy the Vite app to Vercel or Netlify with a single environment variable.
+  </Card>
+  <Card title="Environment Variables" href="/setup/environment" icon="key">
+    Required and optional environment variables for both services, with example values.
+  </Card>
+  <Card title="Local Development" href="/quickstart" icon="laptop">
+    Run the Django API and React dev server side-by-side on your local machine.
+  </Card>
+</CardGroup>
+
+<Note>
+  The production backend is hosted at **https://ocipe.onrender.com/api**. If you self-host the backend, update the frontend's API base URL (`VITE_API_BASE_URL`) to point to your own deployment. See [Environment Variables](/setup/environment) for details.
+</Note>

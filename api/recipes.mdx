@@ -1,0 +1,511 @@
+---
+title: "REST API Endpoints for Recipes"
+sidebarTitle: "Recipes API"
+description: "Create, read, update, and delete recipes via the Ocipe REST API. Includes bulk create, AI autofill, ingredient search, and statistics endpoints."
+---
+
+The recipes API provides full CRUD for a user's recipe library. All endpoints are scoped to the authenticated user — each request only accesses that user's data. Ingredient names are stored in lowercase and are deduplicated per user, so the same ingredient name shared across multiple recipes references a single record.
+
+## List recipes
+
+<br />
+
+**`GET /api/recipes/`**
+
+Returns all recipes belonging to the authenticated user. Supports ordering and filtering by ingredient match or meat type.
+
+**Authentication:** Required — `Authorization: Bearer <access_token>`
+
+#### Query parameters
+
+<ParamField query="ordering" type="string" default="-added_date">
+  Sort order for results. Use `-added_date` for newest-first (default) or `added_date` for oldest-first.
+</ParamField>
+
+<ParamField query="ingredients" type="string">
+  Comma-separated list of ingredient names (e.g. `chicken,garlic`). When provided, recipes are ranked by match percentage — the proportion of their ingredients that appear in the supplied list. Recipes with zero matches are excluded. The `accuracy` field in each returned object contains the calculated match percentage.
+</ParamField>
+
+<ParamField query="meat_type" type="string">
+  Filter recipes by meat type (e.g. `Beef`, `Chicken`, `Pork`). Value must match the stored `meat_type` field exactly.
+</ParamField>
+
+#### Response
+
+Returns an array of recipe objects. The `accuracy` field is only present when the `ingredients` filter is used.
+
+<ResponseField name="id" type="integer">Unique recipe identifier.</ResponseField>
+<ResponseField name="name" type="string">Recipe name.</ResponseField>
+<ResponseField name="meat_type" type="string">The meat type category for the recipe.</ResponseField>
+<ResponseField name="longevity" type="integer">How many days the cooked meal stays fresh.</ResponseField>
+<ResponseField name="frequency" type="string">Intended cooking frequency: `weekday`, `weekend`, or `rarely`.</ResponseField>
+<ResponseField name="note" type="string">Optional freeform notes about the recipe.</ResponseField>
+<ResponseField name="state" type="string">Current lifecycle state: `active` or `used`.</ResponseField>
+<ResponseField name="added_date" type="string">ISO 8601 timestamp of when the recipe was created.</ResponseField>
+<ResponseField name="ingredient_list" type="array">
+  Array of ingredient objects, each with `name` (string) and `quantity` (string).
+</ResponseField>
+<ResponseField name="accuracy" type="number">
+  Percentage of the recipe's ingredients that matched the `ingredients` filter query. Only present when `ingredients` is supplied.
+</ResponseField>
+
+```bash
+curl https://ocipe.onrender.com/api/recipes/ \
+  -H "Authorization: Bearer <access_token>"
+```
+
+```bash
+# Filter by ingredients and meat type
+curl "https://ocipe.onrender.com/api/recipes/?ingredients=chicken,garlic&meat_type=Chicken" \
+  -H "Authorization: Bearer <access_token>"
+```
+
+Example response:
+
+```json
+[
+  {
+    "id": 1,
+    "name": "Garlic Chicken Stir-fry",
+    "meat_type": "Chicken",
+    "longevity": 3,
+    "frequency": "weekday",
+    "note": "Great for meal prep",
+    "state": "active",
+    "added_date": "2024-03-10T08:00:00Z",
+    "ingredient_list": [
+      { "name": "chicken", "quantity": "400g" },
+      { "name": "garlic", "quantity": "3 cloves" }
+    ],
+    "accuracy": 100
+  }
+]
+```
+
+---
+
+## Create a recipe
+
+<br />
+
+**`POST /api/recipes/`**
+
+Creates a single recipe for the authenticated user. Ingredient names are automatically lowercased and deduplicated.
+
+**Authentication:** Required — `Authorization: Bearer <access_token>`
+
+#### Request body
+
+<ParamField body="name" type="string" required>
+  Recipe name.
+</ParamField>
+
+<ParamField body="meat_type" type="string" required>
+  Meat type category (e.g. `Chicken`, `Beef`, `Pork`, `Seafood`, `Vegetarian`).
+</ParamField>
+
+<ParamField body="longevity" type="integer" required>
+  Number of days the cooked meal stays fresh.
+</ParamField>
+
+<ParamField body="frequency" type="string" required>
+  Intended cooking frequency. Must be one of `weekday`, `weekend`, or `rarely`.
+</ParamField>
+
+<ParamField body="state" type="string" required>
+  Initial lifecycle state. Must be `active` or `used`.
+</ParamField>
+
+<ParamField body="ingredients" type="array" required>
+  Array of ingredient objects. Each object must have a `name` (string, required) and may include a `quantity` (string, optional).
+</ParamField>
+
+<ParamField body="note" type="string">
+  Optional freeform notes.
+</ParamField>
+
+#### Response
+
+Returns the newly created recipe object (same shape as the list endpoint).
+
+```bash
+curl -X POST https://ocipe.onrender.com/api/recipes/ \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Beef Bulgogi",
+    "meat_type": "Beef",
+    "longevity": 4,
+    "frequency": "weekend",
+    "state": "active",
+    "note": "Marinate overnight for best results",
+    "ingredients": [
+      { "name": "beef sirloin", "quantity": "500g" },
+      { "name": "soy sauce", "quantity": "3 tbsp" },
+      { "name": "garlic", "quantity": "4 cloves" }
+    ]
+  }'
+```
+
+Example response:
+
+```json
+{
+  "id": 42,
+  "name": "Beef Bulgogi",
+  "meat_type": "Beef",
+  "longevity": 4,
+  "frequency": "weekend",
+  "note": "Marinate overnight for best results",
+  "state": "active",
+  "added_date": "2024-03-15T12:34:56Z",
+  "ingredient_list": [
+    { "name": "beef sirloin", "quantity": "500g" },
+    { "name": "soy sauce", "quantity": "3 tbsp" },
+    { "name": "garlic", "quantity": "4 cloves" }
+  ]
+}
+```
+
+---
+
+## Delete all recipes
+
+<br />
+
+**`DELETE /api/recipes/`**
+
+Deletes **all** recipes belonging to the authenticated user.
+
+**Authentication:** Required — `Authorization: Bearer <access_token>`
+
+<Warning>
+  This action permanently deletes every recipe in the user's library. It cannot be undone. Consider exporting recipes via the bulk endpoint before proceeding.
+</Warning>
+
+#### Response
+
+Returns `204 No Content` on success with an empty body.
+
+```bash
+curl -X DELETE https://ocipe.onrender.com/api/recipes/ \
+  -H "Authorization: Bearer <access_token>"
+```
+
+---
+
+## Retrieve a single recipe
+
+<br />
+
+**`GET /api/recipes/{id}/`**
+
+Returns a single recipe by its ID.
+
+**Authentication:** Required — `Authorization: Bearer <access_token>`
+
+#### Path parameters
+
+<ParamField path="id" type="integer" required>
+  The unique ID of the recipe.
+</ParamField>
+
+#### Response
+
+Returns a single recipe object (same shape as the list endpoint, without `accuracy`).
+
+```bash
+curl https://ocipe.onrender.com/api/recipes/42/ \
+  -H "Authorization: Bearer <access_token>"
+```
+
+---
+
+## Update a recipe
+
+<br />
+
+**`PUT /api/recipes/{id}/`**
+
+Fully replaces an existing recipe. All required fields must be supplied. Any omitted `ingredients` array causes existing ingredients to be left unchanged; if the array is provided, all previous ingredients are replaced.
+
+**Authentication:** Required — `Authorization: Bearer <access_token>`
+
+#### Path parameters
+
+<ParamField path="id" type="integer" required>
+  The unique ID of the recipe to update.
+</ParamField>
+
+#### Request body
+
+Same fields as [Create a recipe](#create-a-recipe). All required fields must be included.
+
+#### Response
+
+Returns the updated recipe object.
+
+```bash
+curl -X PUT https://ocipe.onrender.com/api/recipes/42/ \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Beef Bulgogi (Updated)",
+    "meat_type": "Beef",
+    "longevity": 3,
+    "frequency": "weekend",
+    "state": "active",
+    "note": "Add sesame oil at the end",
+    "ingredients": [
+      { "name": "beef sirloin", "quantity": "500g" },
+      { "name": "soy sauce", "quantity": "3 tbsp" },
+      { "name": "garlic", "quantity": "4 cloves" },
+      { "name": "sesame oil", "quantity": "1 tbsp" }
+    ]
+  }'
+```
+
+---
+
+## Delete a single recipe
+
+<br />
+
+**`DELETE /api/recipes/{id}/`**
+
+Deletes a single recipe by its ID.
+
+**Authentication:** Required — `Authorization: Bearer <access_token>`
+
+#### Path parameters
+
+<ParamField path="id" type="integer" required>
+  The unique ID of the recipe to delete.
+</ParamField>
+
+#### Response
+
+Returns `204 No Content` on success.
+
+```bash
+curl -X DELETE https://ocipe.onrender.com/api/recipes/42/ \
+  -H "Authorization: Bearer <access_token>"
+```
+
+---
+
+## Bulk create recipes
+
+<br />
+
+**`POST /api/recipes/bulk/`**
+
+Creates multiple recipes in a single request. Useful for importing another user's exported recipe library.
+
+**Authentication:** Required — `Authorization: Bearer <access_token>`
+
+#### Request body
+
+<ParamField body="list" type="array" required>
+  An array of recipe objects. Each object follows the same schema as [Create a recipe](#create-a-recipe). The request fails with `400 Bad Request` if `list` is missing or is not an array.
+</ParamField>
+
+#### Response
+
+Returns `201 Created` with an array of all created recipe objects.
+
+```bash
+curl -X POST https://ocipe.onrender.com/api/recipes/bulk/ \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "list": [
+      {
+        "name": "Tomato Pasta",
+        "meat_type": "Vegetarian",
+        "longevity": 2,
+        "frequency": "weekday",
+        "state": "active",
+        "note": "",
+        "ingredients": [
+          { "name": "pasta", "quantity": "200g" },
+          { "name": "tomato sauce", "quantity": "1 cup" }
+        ]
+      },
+      {
+        "name": "Grilled Salmon",
+        "meat_type": "Seafood",
+        "longevity": 2,
+        "frequency": "weekend",
+        "state": "active",
+        "note": "Season with lemon",
+        "ingredients": [
+          { "name": "salmon fillet", "quantity": "300g" },
+          { "name": "lemon", "quantity": "1" }
+        ]
+      }
+    ]
+  }'
+```
+
+Example response:
+
+```json
+[
+  {
+    "id": 43,
+    "name": "Tomato Pasta",
+    "meat_type": "Vegetarian",
+    "longevity": 2,
+    "frequency": "weekday",
+    "note": "",
+    "state": "active",
+    "added_date": "2024-03-15T12:35:00Z",
+    "ingredient_list": [
+      { "name": "pasta", "quantity": "200g" },
+      { "name": "tomato sauce", "quantity": "1 cup" }
+    ]
+  },
+  {
+    "id": 44,
+    "name": "Grilled Salmon",
+    "meat_type": "Seafood",
+    "longevity": 2,
+    "frequency": "weekend",
+    "note": "Season with lemon",
+    "state": "active",
+    "added_date": "2024-03-15T12:35:00Z",
+    "ingredient_list": [
+      { "name": "salmon fillet", "quantity": "300g" },
+      { "name": "lemon", "quantity": "1" }
+    ]
+  }
+]
+```
+
+---
+
+## Get recipe statistics
+
+<br />
+
+**`GET /api/recipes/stats/`**
+
+Returns aggregated statistics across all of the authenticated user's recipes, broken down by meat type and cooking frequency. Each bucket includes both the total count and the count of recipes currently in the `active` state.
+
+**Authentication:** Required — `Authorization: Bearer <access_token>`
+
+#### Response
+
+<ResponseField name="meat_type_stats" type="array">
+  Array of objects, each with `meat_type` (string), `total` (integer), and `active` (integer).
+</ResponseField>
+
+<ResponseField name="frequency_stats" type="array">
+  Array of objects, each with `frequency` (string), `total` (integer), and `active` (integer).
+</ResponseField>
+
+```bash
+curl https://ocipe.onrender.com/api/recipes/stats/ \
+  -H "Authorization: Bearer <access_token>"
+```
+
+Example response:
+
+```json
+{
+  "meat_type_stats": [
+    { "meat_type": "Chicken", "total": 8, "active": 5 },
+    { "meat_type": "Beef", "total": 4, "active": 3 },
+    { "meat_type": "Vegetarian", "total": 3, "active": 3 }
+  ],
+  "frequency_stats": [
+    { "frequency": "weekday", "total": 9, "active": 7 },
+    { "frequency": "weekend", "total": 4, "active": 3 },
+    { "frequency": "rarely", "total": 2, "active": 1 }
+  ]
+}
+```
+
+---
+
+## AI autofill from URL
+
+<br />
+
+**`POST /api/recipes/genai/`**
+
+Scrapes a recipe webpage and uses Google Gemini to extract structured recipe data. The returned object is **not saved** — the front end uses it to pre-fill the recipe creation form, giving the user a chance to review and edit before saving.
+
+**Authentication:** Required — `Authorization: Bearer <access_token>`
+
+<Note>
+  Video URLs (YouTube, TikTok, and similar platforms) are not supported. Only standard recipe article pages can be parsed. Submitting a video URL may result in an error or an empty response.
+</Note>
+
+#### Request body
+
+<ParamField body="url" type="string" required>
+  The full URL of the recipe page to parse (e.g. `https://some-recipe-site.com/pasta`). The request fails with `400 Bad Request` if `url` is missing.
+</ParamField>
+
+#### Response
+
+Returns a recipe object in the same shape as the create/list endpoints. The recipe is **not** persisted to the database.
+
+```bash
+curl -X POST https://ocipe.onrender.com/api/recipes/genai/ \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://www.allrecipes.com/recipe/example-pasta"}'
+```
+
+Example response:
+
+```json
+{
+  "name": "Classic Spaghetti Carbonara",
+  "meat_type": "Pork",
+  "longevity": 2,
+  "frequency": "weekday",
+  "note": "Use guanciale for authentic flavour",
+  "state": "active",
+  "ingredient_list": [
+    { "name": "spaghetti", "quantity": "200g" },
+    { "name": "guanciale", "quantity": "100g" },
+    { "name": "egg yolks", "quantity": "4" },
+    { "name": "pecorino romano", "quantity": "50g" }
+  ]
+}
+```
+
+---
+
+## Refresh all recipe states
+
+<br />
+
+**`POST /api/recipes/refresh/`**
+
+Resets the `state` field of **all** recipes belonging to the authenticated user back to `active`. Use this at the start of a new meal planning cycle to make previously `used` recipes available again.
+
+**Authentication:** Required — `Authorization: Bearer <access_token>`
+
+#### Response
+
+<ResponseField name="updated_count" type="integer">
+  The number of recipes whose state was updated to `active`.
+</ResponseField>
+
+```bash
+curl -X POST https://ocipe.onrender.com/api/recipes/refresh/ \
+  -H "Authorization: Bearer <access_token>"
+```
+
+Example response:
+
+```json
+{
+  "updated_count": 15
+}
+```

@@ -1,0 +1,111 @@
+---
+title: "Environment Variables Reference for Ocipe"
+sidebarTitle: "Environment"
+description: "All required and optional environment variables for the Ocipe backend and frontend, with descriptions and example values."
+---
+
+Ocipe requires environment variables for both the backend (Django) and frontend (Vite). Neither service ships with defaults that are safe for production — you must supply these values yourself. This page documents every variable with a description and an example value.
+
+## Backend environment variables
+
+The Django backend loads its environment from a `.env` file in `ocipe/backend/` using `python-dotenv`. The following variables are read in `settings.py`:
+
+<ParamField path="DJANGO_SECRET" type="string" required>
+  The Django `SECRET_KEY` used for cryptographic signing of sessions, CSRF tokens, and other security-sensitive operations. Generate a long, random string and keep it secret. Rotating this value will invalidate all existing sessions.
+
+  **Example:** `django-insecure-g3$kx!p2v8q...` (use a tool like `python -c "import secrets; print(secrets.token_urlsafe(50))"` to generate one)
+</ParamField>
+
+<ParamField path="POSTGRES_DB" type="string" required>
+  Name of the PostgreSQL database.
+
+  **Example:** `ocipe`
+</ParamField>
+
+<ParamField path="POSTGRES_USER" type="string" required>
+  PostgreSQL username.
+
+  **Example:** `postgres`
+</ParamField>
+
+<ParamField path="POSTGRES_PASSWORD" type="string" required>
+  Password for the PostgreSQL user.
+
+  **Example:** `supersecretpassword`
+</ParamField>
+
+<ParamField path="POSTGRES_HOST" type="string" required>
+  Hostname or IP address of the PostgreSQL server.
+
+  **Example:** `localhost` (local) or a Render/cloud hostname in production
+</ParamField>
+
+<ParamField path="GEMINI_API_KEY" type="string" required>
+  Google Gemini API key used by the `recipes` app to autofill recipe details with AI. Obtain yours from [Google AI Studio](https://aistudio.google.com/).
+
+  **Example:** `AIzaSyABC123...`
+</ParamField>
+
+<Note>
+  `ALLOWED_HOSTS` and `CORS_ALLOWED_ORIGINS` are hardcoded in `settings.py` for the hosted deployment (`ocipe.onrender.com` and `https://ocipe.vercel.app` respectively). If you self-host either service at a different domain, update those values directly in `settings.py`.
+</Note>
+
+## Frontend environment variables
+
+The Vite frontend reads environment variables prefixed with `VITE_`. Place them in a `.env.local` file in `ocipe/frontend/` for local development, or set them in your hosting dashboard for production.
+
+<ParamField path="VITE_API_BASE_URL" type="string">
+  Base URL for all Axios API requests. The `axiosInstance` in `src/api/axios.ts` uses this value. If unset, it falls back to the hard-coded default of `https://ocipe.onrender.com/api`.
+
+  **Example:** `http://localhost:8000/api` (local) or `https://your-backend.onrender.com/api` (production)
+</ParamField>
+
+## Sample configuration files
+
+<CodeGroup>
+  ```bash ocipe/backend/.env
+  DJANGO_SECRET=your-long-random-secret-key-here
+  POSTGRES_DB=ocipe
+  POSTGRES_USER=postgres
+  POSTGRES_PASSWORD=yourpassword
+  POSTGRES_HOST=localhost
+  GEMINI_API_KEY=AIzaSyYourGeminiKeyHere
+  ```
+
+  ```bash ocipe/frontend/.env.local
+  VITE_API_BASE_URL=http://localhost:8000/api
+  ```
+</CodeGroup>
+
+## JWT settings
+
+The following JWT-related values are configured directly in `settings.py` via `SIMPLE_JWT`. They are not environment variables — change them by editing the file.
+
+| Setting | Default | Description |
+|---|---|---|
+| `ACCESS_TOKEN_LIFETIME` | `timedelta(minutes=5)` | How long an access token is valid. Short-lived for security; the client silently refreshes using the cookie. |
+| `REFRESH_TOKEN_LIFETIME` | `timedelta(days=30)` | How long the refresh token cookie remains valid before the user must log in again. |
+| `ROTATE_REFRESH_TOKENS` | `False` | When `False`, the same refresh token is reused until it expires. |
+
+The refresh token cookie is set with the following attributes in `users/views.py`:
+
+| Cookie attribute | Value | Why |
+|---|---|---|
+| `httponly` | `True` | Prevents JavaScript from reading the token, mitigating XSS theft |
+| `secure` | `True` | Cookie is only sent over HTTPS |
+| `samesite` | `"None"` | Allows the cookie to be sent in cross-site requests (Vercel → Render) |
+| `max_age` | `3600 * 24 * 30` (30 days) | Matches `REFRESH_TOKEN_LIFETIME` |
+
+<Warning>
+  Never commit `.env` or `.env.local` files to version control. Add the following lines to your `.gitignore` if they are not already present:
+
+  ```
+  .env
+  .env.local
+  .env.*.local
+  ```
+</Warning>
+
+<Tip>
+  Google Gemini API keys are free for moderate usage through Google AI Studio. Create one at [https://aistudio.google.com/](https://aistudio.google.com/) — no billing information is required to get started.
+</Tip>

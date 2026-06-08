@@ -1,0 +1,117 @@
+---
+title: "Deploy the Ocipe React Frontend"
+sidebarTitle: "Frontend"
+description: "Build and deploy the Ocipe React 19 + Vite frontend. Configure the API base URL and deploy to Vercel, Netlify, or any static host."
+---
+
+The Ocipe frontend is a React 19 + TypeScript application built with Vite. It communicates with the Django backend via Axios and manages all server state — recipe lists, fridge contents, grocery lists — with TanStack Query's caching and background-refetch model.
+
+## Requirements
+
+- Node.js 18 or later
+- npm (bundled with Node.js)
+
+## Local development
+
+<Steps>
+  <Step title="Enter the frontend directory">
+    ```bash
+    cd ocipe/frontend
+    ```
+  </Step>
+
+  <Step title="Install dependencies">
+    ```bash
+    npm install
+    ```
+  </Step>
+
+  <Step title="Configure the API base URL">
+    The Axios instance in `src/api/axios.ts` defaults to the production backend:
+
+    ```typescript
+    export const axiosInstance = axios.create({
+      baseURL: "https://ocipe.onrender.com/api",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    ```
+
+    To point at a locally running Django server instead, create a `.env.local` file in `ocipe/frontend/`:
+
+    ```bash
+    # ocipe/frontend/.env.local
+    VITE_API_BASE_URL=http://localhost:8000/api
+    ```
+
+    Then update `src/api/axios.ts` to read the variable:
+
+    ```typescript
+    baseURL: import.meta.env.VITE_API_BASE_URL ?? "https://ocipe.onrender.com/api",
+    ```
+  </Step>
+
+  <Step title="Start the development server">
+    ```bash
+    npm run dev
+    ```
+
+    Vite starts a hot-reloading dev server at **http://localhost:5173**.
+  </Step>
+</Steps>
+
+## Key technologies
+
+| Package | Purpose |
+|---|---|
+| React 19 + TypeScript | UI framework and type safety |
+| Vite 6 | Fast dev server and optimised production bundler |
+| TanStack Query v5 | Async data fetching, caching, and background synchronisation |
+| TanStack Table v8 | Headless recipe table with sorting and filtering |
+| dnd-kit | Drag-and-drop for ingredient and step reordering |
+| Tailwind CSS v4 | Utility-first styling |
+| shadcn/ui (Radix UI) | Accessible component primitives (dialogs, dropdowns, etc.) |
+| React Router v7 | Client-side routing |
+| React Hook Form + Zod | Form state management and schema validation |
+| Axios 1.9 | HTTP client for all API requests |
+| Sonner | Toast notifications |
+| Google Gemini AI | AI-powered recipe autofill (via the Django backend) |
+
+## Production build
+
+Compile and type-check the project for production:
+
+```bash
+npm run build
+```
+
+The output lands in `frontend/dist/`. To preview the production build locally before deploying:
+
+```bash
+npm run preview
+```
+
+## Deploying to Vercel
+
+Vercel is the recommended host for the Ocipe frontend because it natively handles Vite projects and single-page application routing.
+
+1. Push your repository to GitHub and sign in to [Vercel](https://vercel.com).
+2. Click **Add New → Project** and import your repository. Set the **Root Directory** to `frontend`.
+3. Vercel automatically detects the Vite framework — no build-command changes are needed.
+4. Under **Environment Variables**, add:
+   ```
+   VITE_API_BASE_URL = https://ocipe.onrender.com/api
+   ```
+   Replace the value with your own backend URL if you are self-hosting.
+5. Click **Deploy**. Vercel builds the project and publishes it to a `.vercel.app` domain.
+
+<Note>
+  The `vercel.json` file in the `frontend` directory configures URL rewrites so that React Router handles all client-side navigation correctly on Vercel — deep links and page refreshes are routed to `index.html` rather than returning 404 errors.
+</Note>
+
+```json vercel.json
+{
+  "rewrites": [{ "source": "/(.*)", "destination": "/" }]
+}
+```

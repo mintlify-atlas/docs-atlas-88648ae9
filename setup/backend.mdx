@@ -1,0 +1,149 @@
+---
+title: "Deploy the Ocipe Django Backend"
+sidebarTitle: "Backend"
+description: "Set up and deploy the Ocipe Django REST API backend with PostgreSQL, JWT auth, and Google Gemini integration on Render or any hosting provider."
+---
+
+The Ocipe backend is a Django 5.2.1 application using Django REST Framework, SimpleJWT for token authentication, and PostgreSQL as its database. It also integrates Google Gemini for AI-powered recipe autofill. This guide walks through local setup and production deployment on Render.
+
+## Requirements
+
+- Python 3.11 or later
+- PostgreSQL (local instance or managed cloud database)
+- `pip` with `virtualenv`, or Docker
+
+**Key packages** (from `requirements.txt`):
+
+| Package | Version | Purpose |
+|---|---|---|
+| `Django` | 5.2.1 | Core web framework |
+| `djangorestframework` | 3.16.0 | REST API toolkit |
+| `djangorestframework_simplejwt` | 5.5.0 | JWT authentication |
+| `django-cors-headers` | 4.7.0 | Cross-origin request handling |
+| `django-filter` | 25.1 | Query filtering for API views |
+| `psycopg2-binary` | 2.9.10 | PostgreSQL adapter |
+| `gunicorn` | 23.0.0 | Production WSGI server |
+| `google-generativeai` | 1.16.1 | Google Gemini AI integration |
+| `python-dotenv` | 1.1.0 | `.env` file loading |
+
+## Local setup
+
+<Steps>
+  <Step title="Clone the repository and enter the backend directory">
+    ```bash
+    git clone https://github.com/viet2811/ocipe.git
+    cd ocipe/backend
+    ```
+  </Step>
+
+  <Step title="Create and activate a virtual environment">
+    ```bash
+    python -m venv venv
+    source venv/bin/activate   # Windows: venv\Scripts\activate
+    ```
+  </Step>
+
+  <Step title="Install dependencies">
+    ```bash
+    pip install -r requirements.txt
+    ```
+  </Step>
+
+  <Step title="Configure environment variables">
+    Create a `.env` file in `ocipe/backend/` with the required values. See [Environment Variables](/setup/environment) for the full reference.
+
+    ```bash
+    # ocipe/backend/.env
+    DJANGO_SECRET=your-secret-key-here
+    POSTGRES_DB=ocipe
+    POSTGRES_USER=postgres
+    POSTGRES_PASSWORD=yourpassword
+    POSTGRES_HOST=localhost
+    GEMINI_API_KEY=your-gemini-key
+    ```
+  </Step>
+
+  <Step title="Apply database migrations">
+    ```bash
+    python manage.py migrate
+    ```
+  </Step>
+
+  <Step title="Start the development server">
+    ```bash
+    python manage.py runserver
+    ```
+
+    The API will be available at `http://localhost:8000/api/`.
+  </Step>
+</Steps>
+
+## Django apps
+
+The project is split into five focused Django applications, each mounted under a dedicated API prefix:
+
+| App | URL prefix | Responsibility |
+|---|---|---|
+| `recipes` | `/api/recipes/` | Recipe CRUD operations, ingredient management, and Google Gemini AI autofill for recipe details |
+| `users` | `/api/user/` | User registration, JWT token issuance (`CookieTokenObtainPairView`), token refresh (`CookieTokenRefreshView`), and logout |
+| `fridge` | `/api/fridge/` | Per-user fridge inventory — tracking what ingredients each user currently has on hand |
+| `grocery` | `/api/grocery/` | Grocery list generation and history tracking for planned shopping |
+| `monitoring` | `/api/monitoring/` | Health-check and monitoring endpoints used by the hosting platform |
+
+## Security settings
+
+The production `settings.py` enforces HTTPS and secure cross-origin cookie handling:
+
+```python
+# settings.py (production-relevant excerpts)
+
+DEBUG = False
+
+SECURE_SSL_REDIRECT = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+
+CORS_ALLOWED_ORIGINS = [
+    "https://ocipe.vercel.app",
+]
+CORS_ALLOW_CREDENTIALS = True
+
+ALLOWED_HOSTS = ["ocipe.onrender.com"]
+```
+
+The JWT refresh token is set as an HTTP-only cookie by `CookieTokenObtainPairView` in the `users` app:
+
+```python
+response.set_cookie(
+    key='refresh_token',
+    value=refresh,
+    httponly=True,
+    secure=True,
+    samesite="None",
+    max_age=3600 * 24 * 30  # 30 days
+)
+```
+
+`SameSite=None` is required because the frontend (Vercel) and backend (Render) are on different origins. Both `Secure=True` and `SameSite=None` must be set together for cross-site cookies to work in modern browsers.
+
+## Production deployment on Render
+
+Render is the recommended hosting platform for the Ocipe backend. Follow these steps to create a new Web Service:
+
+1. Push your code to a GitHub repository and sign in to [Render](https://render.com).
+2. Click **New → Web Service** and connect your repository. Set the **Root Directory** to `backend`.
+3. Set the **Build Command**:
+   ```bash
+   pip install -r requirements.txt && python manage.py migrate
+   ```
+4. Set the **Start Command**:
+   ```bash
+   gunicorn ocipe.wsgi
+   ```
+5. Add your environment variables in the Render dashboard under **Environment**. See [Environment Variables](/setup/environment) for the complete list.
+6. Create a **PostgreSQL** database from Render's dashboard and copy the connection details into your environment variables (`POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`).
+7. Update `ALLOWED_HOSTS` in `settings.py` to include your Render service hostname, and update `CORS_ALLOWED_ORIGINS` if your frontend is deployed to a different domain than `ocipe.vercel.app`.
+
+<Warning>
+  Never set `DEBUG=True` in production. Doing so exposes full tracebacks, internal settings, and the browsable API without authentication to anyone who can reach the server.
+</Warning>

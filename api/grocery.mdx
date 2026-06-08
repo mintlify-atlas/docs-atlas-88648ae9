@@ -1,0 +1,330 @@
+---
+title: "REST API Endpoints for Grocery Planning"
+sidebarTitle: "Grocery API"
+description: "Generate grocery lists from recipes, manage the persistent grocery checklist, and browse grocery plan history via the Ocipe REST API."
+---
+
+The grocery API handles two related features: generating shopping lists from a set of recipes (cross-referenced against the fridge), and managing a persistent per-user grocery checklist. When a grocery list is generated, each recipe's state is automatically set to `used` and the plan is saved to history — giving you a full record of past meal planning cycles.
+
+## Generate a grocery list
+
+<br />
+
+**`POST /api/grocery/`**
+
+The core grocery generation endpoint. Accepts a list of recipe IDs, aggregates all required ingredients, and cross-references them against the user's fridge inventory to split results into items that need to be purchased versus items already on hand.
+
+**Authentication:** Required — `Authorization: Bearer <access_token>`
+
+#### Request body
+
+<ParamField body="recipe_ids" type="array" required>
+  A non-empty array of integer recipe IDs. Duplicate IDs are supported — if the same recipe appears more than once, its ingredient quantities are multiplied accordingly. Returns `400 Bad Request` if the value is missing, not an array, or empty.
+</ParamField>
+
+#### Response
+
+<ResponseField name="grocery_list" type="array">
+  Ingredients needed for the selected recipes that are **not** in the user's fridge. Each item has `name` (string) and `quantity` (string). These are the items to purchase.
+</ResponseField>
+
+<ResponseField name="others" type="array">
+  Ingredients needed for the selected recipes that **are** already in the user's fridge. Same shape as `grocery_list`. Provided for reference so you know what you have available.
+</ResponseField>
+
+<Note>
+  Quantities are aggregated as text, joined with ` + ` (e.g. `"200g + 150g"`). If a recipe ID appears twice in `recipe_ids`, its quantity contribution is doubled in the aggregation — so `"200g"` becomes `"200g + 200g"`. Numeric addition is not performed; the raw quantity strings are concatenated.
+</Note>
+
+**Side effects:** This endpoint saves the submitted `recipe_ids` to the user's grocery plan history and sets the `state` of each referenced recipe to `used`.
+
+```bash
+curl -X POST https://ocipe.onrender.com/api/grocery/ \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"recipe_ids": [1, 2, 3]}'
+```
+
+Example response:
+
+```json
+{
+  "grocery_list": [
+    { "name": "beef sirloin", "quantity": "500g" },
+    { "name": "soy sauce", "quantity": "3 tbsp + 2 tbsp" },
+    { "name": "sesame oil", "quantity": "1 tbsp" }
+  ],
+  "others": [
+    { "name": "garlic", "quantity": "4 cloves" },
+    { "name": "onion", "quantity": "1" }
+  ]
+}
+```
+
+---
+
+## Get grocery checklist
+
+<br />
+
+**`GET /api/grocery/list/`**
+
+Returns all items in the authenticated user's persistent grocery checklist. Items are returned newest-first (descending by ID). The checklist is independent of the grocery generation feature and persists between sessions.
+
+**Authentication:** Required — `Authorization: Bearer <access_token>`
+
+#### Response
+
+Returns an array of grocery list item objects.
+
+<ResponseField name="id" type="integer">Unique ID of the checklist item.</ResponseField>
+<ResponseField name="item" type="string">The item name or description.</ResponseField>
+<ResponseField name="isChecked" type="boolean">Whether the item has been checked off. Defaults to `false`.</ResponseField>
+
+```bash
+curl https://ocipe.onrender.com/api/grocery/list/ \
+  -H "Authorization: Bearer <access_token>"
+```
+
+Example response:
+
+```json
+[
+  { "id": 9, "item": "eggs", "isChecked": false },
+  { "id": 8, "item": "milk", "isChecked": true },
+  { "id": 7, "item": "bread", "isChecked": false }
+]
+```
+
+---
+
+## Add items to checklist
+
+<br />
+
+**`POST /api/grocery/list/`**
+
+Adds one or more items to the persistent grocery checklist. Items are supplied as a newline-separated string, making it easy to paste a multi-item list in a single request.
+
+**Authentication:** Required — `Authorization: Bearer <access_token>`
+
+#### Request body
+
+<ParamField body="items" type="string" required>
+  A newline-separated (`\n`) string of item names. Blank lines are ignored. Returns `400 Bad Request` if the string is empty or contains only whitespace.
+</ParamField>
+
+#### Response
+
+- **Single item:** Returns `200 OK` with `{"id": <new_id>}`.
+- **Multiple items:** Returns `201 Created` with an empty body.
+
+```bash
+# Add a single item
+curl -X POST https://ocipe.onrender.com/api/grocery/list/ \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"items": "milk"}'
+```
+
+```bash
+# Add multiple items at once
+curl -X POST https://ocipe.onrender.com/api/grocery/list/ \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"items": "milk\nbread\neggs"}'
+```
+
+Single item response:
+
+```json
+{ "id": 10 }
+```
+
+---
+
+## Update a checklist item
+
+<br />
+
+**`PATCH /api/grocery/list/{id}/`**
+
+Partially updates a single grocery checklist item. Typically used to toggle the `isChecked` state or rename an item.
+
+**Authentication:** Required — `Authorization: Bearer <access_token>`
+
+#### Path parameters
+
+<ParamField path="id" type="integer" required>
+  The ID of the checklist item to update.
+</ParamField>
+
+#### Request body
+
+Supply any subset of the following fields:
+
+<ParamField body="item" type="string">
+  Updated item name or description.
+</ParamField>
+
+<ParamField body="isChecked" type="boolean">
+  Updated checked state. Pass `true` to mark as purchased, `false` to uncheck.
+</ParamField>
+
+#### Response
+
+Returns the updated checklist item object.
+
+```bash
+# Toggle an item to checked
+curl -X PATCH https://ocipe.onrender.com/api/grocery/list/9/ \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"isChecked": true}'
+```
+
+Example response:
+
+```json
+{ "id": 9, "item": "eggs", "isChecked": true }
+```
+
+---
+
+## Delete a checklist item
+
+<br />
+
+**`DELETE /api/grocery/list/{id}/`**
+
+Removes a single item from the grocery checklist.
+
+**Authentication:** Required — `Authorization: Bearer <access_token>`
+
+#### Path parameters
+
+<ParamField path="id" type="integer" required>
+  The ID of the checklist item to delete.
+</ParamField>
+
+#### Response
+
+Returns `204 No Content` on success with an empty body.
+
+```bash
+curl -X DELETE https://ocipe.onrender.com/api/grocery/list/9/ \
+  -H "Authorization: Bearer <access_token>"
+```
+
+---
+
+## Clear the entire checklist
+
+<br />
+
+**`DELETE /api/grocery/list/`**
+
+Deletes the authenticated user's entire grocery checklist in one operation.
+
+**Authentication:** Required — `Authorization: Bearer <access_token>`
+
+#### Response
+
+Returns `204 No Content` on success with an empty body.
+
+```bash
+curl -X DELETE https://ocipe.onrender.com/api/grocery/list/ \
+  -H "Authorization: Bearer <access_token>"
+```
+
+---
+
+## Get grocery plan history
+
+<br />
+
+**`GET /api/grocery/history/`**
+
+Returns all past grocery plans for the authenticated user, ordered newest-first. Each history entry records the `recipe_ids` that were submitted when the plan was generated and the timestamp of creation.
+
+**Authentication:** Required — `Authorization: Bearer <access_token>`
+
+#### Response
+
+Returns an array of history objects.
+
+<ResponseField name="created_at" type="string">ISO 8601 timestamp of when the grocery plan was generated.</ResponseField>
+<ResponseField name="recipes" type="array">Array of recipe IDs that were included in that grocery run.</ResponseField>
+
+```bash
+curl https://ocipe.onrender.com/api/grocery/history/ \
+  -H "Authorization: Bearer <access_token>"
+```
+
+Example response:
+
+```json
+[
+  {
+    "created_at": "2024-03-15T18:30:00Z",
+    "recipes": [1, 3, 5]
+  },
+  {
+    "created_at": "2024-03-08T17:00:00Z",
+    "recipes": [2, 4]
+  }
+]
+```
+
+---
+
+## Get most recent grocery plan
+
+<br />
+
+**`GET /api/grocery/history/recent/`**
+
+Returns only the single most recent grocery plan for the authenticated user. Useful for restoring the last planning session on app load.
+
+**Authentication:** Required — `Authorization: Bearer <access_token>`
+
+#### Response
+
+Returns an array containing at most one history object (same shape as the full history endpoint). Returns an empty array if no history exists yet.
+
+```bash
+curl https://ocipe.onrender.com/api/grocery/history/recent/ \
+  -H "Authorization: Bearer <access_token>"
+```
+
+Example response:
+
+```json
+[
+  {
+    "created_at": "2024-03-15T18:30:00Z",
+    "recipes": [1, 3, 5]
+  }
+]
+```
+
+---
+
+## Delete all history
+
+<br />
+
+**`DELETE /api/grocery/history/`**
+
+Permanently deletes all grocery plan history for the authenticated user.
+
+**Authentication:** Required — `Authorization: Bearer <access_token>`
+
+#### Response
+
+Returns `204 No Content` on success with an empty body.
+
+```bash
+curl -X DELETE https://ocipe.onrender.com/api/grocery/history/ \
+  -H "Authorization: Bearer <access_token>"
+```

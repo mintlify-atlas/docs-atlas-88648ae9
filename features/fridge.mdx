@@ -1,0 +1,68 @@
+---
+title: "Fridge Inventory: Track Ingredients You Already Have"
+sidebarTitle: "Fridge"
+description: "The Fridge feature in Ocipe stores your current ingredient inventory. Ocipe uses it to subtract items from generated grocery lists automatically."
+---
+
+The Fridge is how Ocipe knows what you already have at home, so the grocery planner can exclude those items from your shopping list. Keeping it up to date is the single most important habit for getting accurate, useful grocery lists out of Ocipe.
+
+## Why It Matters
+
+Without a fridge inventory, generating a grocery list would simply return every ingredient from every selected recipe — leaving you to manually cross off what you already own. With a fridge inventory, Ocipe does that subtraction for you: ingredients that appear in both your recipe selection and your fridge are moved to the **"already have"** list, so only the items you actually need to buy appear in the main grocery list.
+
+The fridge also powers the **Fridge Search** on the recipes page, which ranks recipes by how many of their ingredients you already have on hand.
+
+---
+
+## Data Model
+
+Each user account has exactly **one Fridge**. The fridge holds a collection of `FridgeIngredient` records, each with:
+
+| Field | Description |
+|---|---|
+| `ingredient` | The ingredient name, shared with the recipes ingredient pool. |
+| `group` | A user-defined group label that organises ingredients into categories (e.g. `"Dairy"`, `"Veggies"`, `"Pantry"`). |
+
+Ingredients are not stored as a flat list — they are always associated with a group, which keeps the fridge view organised as your inventory grows.
+
+---
+
+## Managing Ingredients
+
+### Adding an ingredient
+
+Click **Add**, then type the ingredient name and the group it belongs to. If the group does not exist yet, it is created automatically.
+
+### Editing an ingredient or group name
+
+Click directly on any ingredient name or group label to edit it inline — like a notes app. There is no separate edit mode and no save button to press. Changes are applied live as soon as you finish typing and move focus away.
+
+### Changing an ingredient's group
+
+Drag the **handle icon (⋮⋮)** on the left side of an ingredient row and drop it into a different group. This is the fastest way to reorganise your fridge after adding new items or restructuring your groups.
+
+### Deleting an ingredient
+
+Click the delete icon next to any individual ingredient to remove it from the fridge. This does not affect your recipes.
+
+### Deleting a group
+
+Use the delete action on a group header to remove the entire group.
+
+<Warning>
+  Deleting a group permanently deletes **all ingredients within that group**. There is no confirmation step beyond the initial prompt. Make sure you only want to remove the whole group before proceeding.
+</Warning>
+
+---
+
+## Groups
+
+Groups are entirely user-defined — Ocipe does not impose any fixed categories. Common examples include `"Dairy"`, `"Veggies"`, `"Pantry"`, `"Freezer"`, or `"Condiments"`, but you can name them anything that fits your kitchen.
+
+**Renaming a group** updates the group label on every ingredient in that group at once. You do not need to rename each ingredient individually.
+
+From the API perspective, a group rename sends a `PUT` request to `/fridge/ingredient/group/{old_name}` with `{ "new_group": "new name" }`, which updates all matching `FridgeIngredient` records in a single operation.
+
+<Tip>
+  Update your fridge right after each grocery run — add the items you just bought and remove anything you've used up. The more accurate your inventory, the more useful the grocery planner becomes.
+</Tip>

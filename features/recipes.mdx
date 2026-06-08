@@ -1,0 +1,135 @@
+---
+title: "Recipe Management: Cookbook Features in Ocipe"
+sidebarTitle: "Recipes"
+description: "Manage your personal recipe library in Ocipe. Add, search, sort, edit recipes by name, category, ingredients, and cooking frequency."
+---
+
+Recipes are the core of Ocipe. Every other feature — the fridge, the grocery planner, the randomizer — revolves around the recipes you save. This page covers the data model, how recipes are displayed, how to search and filter them, and the multiple ways you can add new ones.
+
+## Recipe Data
+
+Each recipe in Ocipe stores exactly what you need and nothing more — no embedded stories, no comment sections.
+
+| Field | Type | Description |
+|---|---|---|
+| `name` | string (max 100 chars) | The name of the dish. |
+| `meat_type` | string (max 30 chars) | Category used to organise and group recipes. Can be anything: meat type, meal time, cuisine, etc. |
+| `longevity` | integer | How long this recipe lasts — interpreted as portions or days, depending on how you define it. |
+| `frequency` | enum | How often you typically cook this dish. One of `weekday`, `weekend`, or `rarely`. |
+| `note` | text (optional) | Personal notes and step-by-step cooking instructions. |
+| `state` | enum | Whether this recipe has already been planned in the current cycle. Either `active` or `used`. |
+| `ingredients` | array of `{name, quantity}` | The ingredient list. Each ingredient has a name (max 50 chars) and an optional free-form quantity string. |
+
+### Frequency values
+
+| Value | What it means |
+|---|---|
+| `weekday` | Quick and straightforward enough to cook on any day of the week. |
+| `weekend` | Time-consuming or effort-intensive — better suited for days when you have more time. |
+| `rarely` | Something you cook once in a while, as a treat or for a special occasion. |
+
+### Recipe state and the refresh cycle
+
+A recipe's `state` is either `active` (not yet cooked or planned in the current cycle) or `used` (already added to a grocery plan and marked done). When you generate a grocery list, all selected recipes automatically transition to `used`.
+
+<Note>
+  At the start of a new meal planning cycle, use the **Refresh All** action on the recipes page to reset every recipe's `state` back to `active`. This clears the slate so you can plan fresh without manually editing each recipe.
+</Note>
+
+### Ingredients
+
+Each recipe holds a list of ingredient objects. The `quantity` field is intentionally free-form — you can write `"200g"`, `"1 tbsp"`, `"a handful"`, or leave it blank entirely. This flexibility makes it easy to capture recipes the way you actually cook them.
+
+```json
+{
+  "ingredients": [
+    { "name": "chicken thighs", "quantity": "500g" },
+    { "name": "soy sauce", "quantity": "2 tbsp" },
+    { "name": "garlic" }
+  ]
+}
+```
+
+---
+
+## Viewing Recipes
+
+Recipes are displayed in a **table view** — the most information-dense layout for a library with many fields. Each column header is clickable for sorting:
+
+- **Click once** → sort ascending
+- **Click twice** → sort descending
+- **Default** → newest recipes first (sorted by `added_date`)
+
+### Quick-view drawer
+
+The table can't display the full ingredient list inline. To see all details without leaving the page, **click a recipe's name** — a drawer slides in from the side showing all fields including the complete ingredient list and notes.
+
+---
+
+## Searching & Filtering
+
+Three search modes help you find the right recipe for any situation.
+
+<Tabs>
+  <Tab title="Global Search">
+    The **default** search mode. Type any keyword and Ocipe searches across recipe names and categories. Great for broad lookups like "chicken" or "pasta", but not precise for ingredient matching — use one of the other modes for that.
+  </Tab>
+
+  <Tab title="Ingredients Search">
+    Type a comma-separated list of ingredients you have on hand. Ocipe finds every recipe that uses at least one of those ingredients, then ranks the results by **match score**.
+
+    **Match score formula:**
+    ```text
+    match_score (%) = (matched_ingredient_count / total_recipe_ingredients) * 100
+    ```
+
+    Recipes with a `0%` match are excluded entirely. The rest are sorted from highest to lowest match score, so the recipe you can most fully cook appears first.
+
+    **Example:** You enter `"chicken, soy sauce, garlic"`. A recipe with 3 total ingredients, all three of which are in your list, scores `100%`. A recipe with 6 total ingredients, two of which match, scores `~33%`.
+  </Tab>
+
+  <Tab title="Fridge Search">
+    Instead of typing ingredients manually, Ocipe reads your [Fridge](/features/fridge) inventory and runs the same ingredient-match algorithm automatically. The result is a ranked list of the recipes you can cook right now based on what you already have.
+
+    Keep your fridge inventory up to date for the most accurate results.
+  </Tab>
+</Tabs>
+
+---
+
+## Adding Recipes
+
+<Tabs>
+  <Tab title="Manual Form">
+    Fill in the recipe form field by field: name, category (`meat_type`), longevity, frequency, an optional note, and your ingredient list. You can add as many ingredients as you like, each with an optional quantity.
+  </Tab>
+
+  <Tab title="AI Autofill">
+    Paste a recipe URL into the autofill input and Ocipe sends it to **Google Gemini**, which extracts and populates the form automatically:
+
+    - `name` — dish name (parenthetical qualifiers are moved to the `note` field)
+    - `meat_type` — category inferred from the recipe
+    - `longevity` — number of portions, extracted as an integer
+    - `frequency` — `weekday` if the recipe is quick and simple, `weekend` if it is time-consuming; defaults to `weekday` when unclear
+    - `note` — full step-by-step cooking instructions plus any extra ingredient notes
+    - `ingredients` — a clean list of base ingredient names with quantities; descriptive adjectives like "thinly sliced" or "diced" are stripped from names and moved to the note
+
+    Review the pre-filled form before saving — AI extraction is accurate but not perfect.
+
+    <Warning>
+      Video links (YouTube, TikTok, Instagram Reels, etc.) are **not supported** for autofill. Paste a text-based recipe page URL instead.
+    </Warning>
+  </Tab>
+
+  <Tab title="Export / Import">
+    On the recipe list view, use the **Export** button to download all your recipes as a JSON file. Share that file with another Ocipe user, who can then use **Import** on their own recipe page to bulk-load your entire cookbook in one step.
+
+    This is the fastest way to seed a new account or share a curated collection of recipes with a friend.
+  </Tab>
+</Tabs>
+
+---
+
+## Editing & Deleting
+
+To edit or delete any recipe, click the **three-dot menu (⋯)** at the far right of its row in the table. From there you can open the edit form (all fields are editable) or permanently delete the recipe.

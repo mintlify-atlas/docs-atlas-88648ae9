@@ -1,0 +1,235 @@
+---
+title: "REST API Endpoints for Fridge Inventory"
+sidebarTitle: "Fridge API"
+description: "Manage the user's fridge ingredient inventory via the Ocipe REST API. Add, update, delete ingredients and rename or delete groups."
+---
+
+The fridge API manages a user's ingredient inventory. Each user has exactly one fridge, provisioned automatically. Ingredients are organized into named groups of your choosing (e.g. "Proteins", "Vegetables", "Pantry"). The grocery planner cross-references fridge contents when generating a shopping list — ingredients already in the fridge are separated into an `others` list so you know what you already have on hand.
+
+## Get fridge contents
+
+<br />
+
+**`GET /api/fridge/`**
+
+Returns the authenticated user's fridge with all ingredients organized by group. Groups are returned in reverse alphabetical order; ingredients within each group are ordered by insertion ID.
+
+**Authentication:** Required — `Authorization: Bearer <access_token>`
+
+#### Response
+
+<ResponseField name="ingredient_list" type="object">
+  A dictionary keyed by group name. Each value is an array of ingredient objects containing `id` (integer — the `FridgeIngredient` row ID) and `name` (string).
+</ResponseField>
+
+```bash
+curl https://ocipe.onrender.com/api/fridge/ \
+  -H "Authorization: Bearer <access_token>"
+```
+
+Example response:
+
+```json
+{
+  "ingredient_list": {
+    "Proteins": [
+      { "id": 3, "name": "chicken" },
+      { "id": 7, "name": "eggs" }
+    ],
+    "Vegetables": [
+      { "id": 1, "name": "garlic" },
+      { "id": 4, "name": "onion" }
+    ],
+    "Pantry": [
+      { "id": 2, "name": "soy sauce" }
+    ]
+  }
+}
+```
+
+---
+
+## Add an ingredient
+
+<br />
+
+**`POST /api/fridge/ingredient/`**
+
+Adds a new ingredient to the authenticated user's fridge. If an ingredient with the same name does not yet exist for this user in the recipes ingredient pool, it is created automatically.
+
+**Authentication:** Required — `Authorization: Bearer <access_token>`
+
+#### Request body
+
+<ParamField body="name" type="string" required>
+  The ingredient name to add.
+</ParamField>
+
+<ParamField body="group" type="string" required>
+  The group to place the ingredient in. Use an existing group name to add to that group, or supply a new name to create a group on the fly.
+</ParamField>
+
+#### Response
+
+Returns the created `FridgeIngredient` object.
+
+<ResponseField name="id" type="integer">The FridgeIngredient row ID (used for update and delete operations).</ResponseField>
+<ResponseField name="name" type="string">The ingredient name (write-only during creation; not returned in the response body).</ResponseField>
+<ResponseField name="group" type="string">The group the ingredient was placed in.</ResponseField>
+
+```bash
+curl -X POST https://ocipe.onrender.com/api/fridge/ingredient/ \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "broccoli", "group": "Vegetables"}'
+```
+
+Example response:
+
+```json
+{
+  "id": 12,
+  "group": "Vegetables"
+}
+```
+
+---
+
+## Update an ingredient
+
+<br />
+
+**`PUT /api/fridge/ingredient/{id}/`**
+
+Updates the name or group of an existing fridge ingredient. Both fields must be supplied. To move an ingredient to a different group, keep the same `name` and change `group`.
+
+**Authentication:** Required — `Authorization: Bearer <access_token>`
+
+#### Path parameters
+
+<ParamField path="id" type="integer" required>
+  The FridgeIngredient ID (from the `id` field returned by the list or create endpoints).
+</ParamField>
+
+#### Request body
+
+<ParamField body="name" type="string" required>
+  The new ingredient name. If unchanged, pass the existing name.
+</ParamField>
+
+<ParamField body="group" type="string" required>
+  The new group name. If unchanged, pass the existing group.
+</ParamField>
+
+#### Response
+
+Returns the updated `FridgeIngredient` object.
+
+```bash
+curl -X PUT https://ocipe.onrender.com/api/fridge/ingredient/12/ \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "broccoli", "group": "Greens"}'
+```
+
+Example response:
+
+```json
+{
+  "id": 12,
+  "group": "Greens"
+}
+```
+
+---
+
+## Delete an ingredient
+
+<br />
+
+**`DELETE /api/fridge/ingredient/{id}/`**
+
+Removes a single ingredient from the fridge.
+
+**Authentication:** Required — `Authorization: Bearer <access_token>`
+
+#### Path parameters
+
+<ParamField path="id" type="integer" required>
+  The FridgeIngredient ID to delete.
+</ParamField>
+
+#### Response
+
+Returns `204 No Content` on success with an empty body.
+
+```bash
+curl -X DELETE https://ocipe.onrender.com/api/fridge/ingredient/12/ \
+  -H "Authorization: Bearer <access_token>"
+```
+
+---
+
+## Rename a group
+
+<br />
+
+**`PUT /api/fridge/ingredient/group/{group_name}`**
+
+Renames a group by updating the `group` field on every ingredient that belongs to it. All ingredients in the group move to the new name atomically.
+
+**Authentication:** Required — `Authorization: Bearer <access_token>`
+
+#### Path parameters
+
+<ParamField path="group_name" type="string" required>
+  The current name of the group to rename.
+</ParamField>
+
+#### Request body
+
+<ParamField body="new_group" type="string" required>
+  The new name for the group. Returns `400 Bad Request` if this field is missing.
+</ParamField>
+
+#### Response
+
+Returns `200 OK` with an empty body on success.
+
+```bash
+curl -X PUT https://ocipe.onrender.com/api/fridge/ingredient/group/Vegetables \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"new_group": "Greens & Vegetables"}'
+```
+
+---
+
+## Delete a group
+
+<br />
+
+**`DELETE /api/fridge/ingredient/group/{group_name}`**
+
+Deletes all ingredients that belong to the specified group.
+
+**Authentication:** Required — `Authorization: Bearer <access_token>`
+
+<Warning>
+  This permanently deletes every ingredient assigned to the group, not just the group label. All individual ingredient rows within that group are removed. This action cannot be undone.
+</Warning>
+
+#### Path parameters
+
+<ParamField path="group_name" type="string" required>
+  The name of the group whose ingredients should be deleted.
+</ParamField>
+
+#### Response
+
+Returns `200 OK` with an empty body on success.
+
+```bash
+curl -X DELETE https://ocipe.onrender.com/api/fridge/ingredient/group/Pantry \
+  -H "Authorization: Bearer <access_token>"
+```
