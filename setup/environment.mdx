@@ -1,10 +1,10 @@
 ---
 title: "Environment Variables Reference for Ocipe"
 sidebarTitle: "Environment"
-description: "All required and optional environment variables for the Ocipe backend and frontend, with descriptions and example values."
+description: "Complete reference for all required and optional environment variables for the Ocipe backend and frontend, with descriptions and example values."
 ---
 
-Ocipe requires environment variables for both the backend (Django) and frontend (Vite). Neither service ships with defaults that are safe for production — you must supply these values yourself. This page documents every variable with a description and an example value.
+Ocipe's Django backend requires several environment variables for secrets and database credentials. The React frontend does not use environment variables — its backend URL is hardcoded in `src/api/axios.ts`. This page documents every backend variable with a description and example value, and explains how to change the frontend API target.
 
 ## Backend environment variables
 
@@ -52,13 +52,11 @@ The Django backend loads its environment from a `.env` file in `ocipe/backend/` 
 
 ## Frontend environment variables
 
-The Vite frontend reads environment variables prefixed with `VITE_`. Place them in a `.env.local` file in `ocipe/frontend/` for local development, or set them in your hosting dashboard for production.
+The Vite frontend does not currently read any `VITE_` environment variables at runtime. The backend URL is set directly in `src/api/axios.ts` as a hardcoded value. To target a different backend, edit the `baseURL` in that file before building or running the dev server.
 
-<ParamField path="VITE_API_BASE_URL" type="string">
-  Base URL for all Axios API requests. The `axiosInstance` in `src/api/axios.ts` uses this value. If unset, it falls back to the hard-coded default of `https://ocipe.onrender.com/api`.
-
-  **Example:** `http://localhost:8000/api` (local) or `https://your-backend.onrender.com/api` (production)
-</ParamField>
+<Note>
+  There are no frontend environment variables to configure. If you self-host the backend, update `baseURL` in `src/api/axios.ts` directly.
+</Note>
 
 ## Sample configuration files
 
@@ -70,10 +68,6 @@ The Vite frontend reads environment variables prefixed with `VITE_`. Place them 
   POSTGRES_PASSWORD=yourpassword
   POSTGRES_HOST=localhost
   GEMINI_API_KEY=AIzaSyYourGeminiKeyHere
-  ```
-
-  ```bash ocipe/frontend/.env.local
-  VITE_API_BASE_URL=http://localhost:8000/api
   ```
 </CodeGroup>
 

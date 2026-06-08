@@ -1,5 +1,5 @@
 ---
-title: "REST API Endpoints for Recipes"
+title: "Ocipe REST API: Recipes CRUD and AI Autofill Reference"
 sidebarTitle: "Recipes API"
 description: "Create, read, update, and delete recipes via the Ocipe REST API. Includes bulk create, AI autofill, ingredient search, and statistics endpoints."
 ---
@@ -12,7 +12,7 @@ The recipes API provides full CRUD for a user's recipe library. All endpoints ar
 
 **`GET /api/recipes/`**
 
-Returns all recipes belonging to the authenticated user. Supports ordering and filtering by ingredient match or meat type.
+Returns all recipes belonging to the authenticated user. Supports ordering and filtering by ingredient match.
 
 **Authentication:** Required — `Authorization: Bearer <access_token>`
 
@@ -23,11 +23,7 @@ Returns all recipes belonging to the authenticated user. Supports ordering and f
 </ParamField>
 
 <ParamField query="ingredients" type="string">
-  Comma-separated list of ingredient names (e.g. `chicken,garlic`). When provided, recipes are ranked by match percentage — the proportion of their ingredients that appear in the supplied list. Recipes with zero matches are excluded. The `accuracy` field in each returned object contains the calculated match percentage.
-</ParamField>
-
-<ParamField query="meat_type" type="string">
-  Filter recipes by meat type (e.g. `Beef`, `Chicken`, `Pork`). Value must match the stored `meat_type` field exactly.
+  Comma-separated list of ingredient names (e.g. `chicken,garlic`). When provided, recipes are ranked by how many of their ingredients appear in the supplied list. Recipes with zero matches are excluded. The `accuracy` field in each returned object contains an integer from 0–100 representing the percentage of the recipe's ingredients matched.
 </ParamField>
 
 #### Response
@@ -45,8 +41,8 @@ Returns an array of recipe objects. The `accuracy` field is only present when th
 <ResponseField name="ingredient_list" type="array">
   Array of ingredient objects, each with `name` (string) and `quantity` (string).
 </ResponseField>
-<ResponseField name="accuracy" type="number">
-  Percentage of the recipe's ingredients that matched the `ingredients` filter query. Only present when `ingredients` is supplied.
+<ResponseField name="accuracy" type="integer">
+  Integer from 0–100 representing the percentage of the recipe's ingredients that matched the `ingredients` filter query. Only present when `ingredients` is supplied.
 </ResponseField>
 
 ```bash
@@ -55,8 +51,8 @@ curl https://ocipe.onrender.com/api/recipes/ \
 ```
 
 ```bash
-# Filter by ingredients and meat type
-curl "https://ocipe.onrender.com/api/recipes/?ingredients=chicken,garlic&meat_type=Chicken" \
+# Filter by ingredients
+curl "https://ocipe.onrender.com/api/recipes/?ingredients=chicken,garlic" \
   -H "Authorization: Bearer <access_token>"
 ```
 

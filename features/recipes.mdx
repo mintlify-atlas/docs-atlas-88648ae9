@@ -1,7 +1,7 @@
 ---
-title: "Recipe Management: Cookbook Features in Ocipe"
+title: "Recipe Management: Your Personal Cookbook in Ocipe"
 sidebarTitle: "Recipes"
-description: "Manage your personal recipe library in Ocipe. Add, search, sort, edit recipes by name, category, ingredients, and cooking frequency."
+description: "Manage your personal recipe library in Ocipe. Add, search, sort, and filter recipes by name, category, ingredients, and cooking frequency."
 ---
 
 Recipes are the core of Ocipe. Every other feature — the fridge, the grocery planner, the randomizer — revolves around the recipes you save. This page covers the data model, how recipes are displayed, how to search and filter them, and the multiple ways you can add new ones.
@@ -80,12 +80,12 @@ Three search modes help you find the right recipe for any situation.
 
     **Match score formula:**
     ```text
-    match_score (%) = (matched_ingredient_count / total_recipe_ingredients) * 100
+    match_score (%) = (matched_ingredient_count * 100) / total_recipe_ingredients
     ```
 
-    Recipes with a `0%` match are excluded entirely. The rest are sorted from highest to lowest match score, so the recipe you can most fully cook appears first.
+    The multiplication happens before the division to avoid integer truncation — the same order used in the database query. Recipes with a `0%` match are excluded entirely. The rest are sorted from highest to lowest match score, so the recipe you can most fully cook appears first.
 
-    **Example:** You enter `"chicken, soy sauce, garlic"`. A recipe with 3 total ingredients, all three of which are in your list, scores `100%`. A recipe with 6 total ingredients, two of which match, scores `~33%`.
+    **Example:** You enter `"chicken, soy sauce, garlic"`. A recipe with 3 total ingredients, all three of which are in your list, scores `100%`. A recipe with 6 total ingredients, two of which match, scores `33%`.
   </Tab>
 
   <Tab title="Fridge Search">
@@ -117,7 +117,7 @@ Three search modes help you find the right recipe for any situation.
     Review the pre-filled form before saving — AI extraction is accurate but not perfect.
 
     <Warning>
-      Video links (YouTube, TikTok, Instagram Reels, etc.) are **not supported** for autofill. Paste a text-based recipe page URL instead.
+      Avoid pasting video links (YouTube, TikTok, Instagram Reels, etc.) into the autofill input. Gemini can read text-based recipe pages but cannot extract structured data from video content, and processing video URLs incurs significantly higher API costs. Use a standard recipe page URL instead.
     </Warning>
   </Tab>
 

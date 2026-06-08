@@ -18,10 +18,10 @@ The fridge also powers the **Fridge Search** on the recipes page, which ranks re
 
 Each user account has exactly **one Fridge**. The fridge holds a collection of `FridgeIngredient` records, each with:
 
-| Field | Description |
-|---|---|
-| `ingredient` | The ingredient name, shared with the recipes ingredient pool. |
-| `group` | A user-defined group label that organises ingredients into categories (e.g. `"Dairy"`, `"Veggies"`, `"Pantry"`). |
+| Field | Type | Description |
+|---|---|---|
+| `ingredient` | FK → Ingredient | The ingredient name, shared with the recipes ingredient pool. |
+| `group` | string (max 30 chars) | A user-defined group label that organises ingredients into categories (e.g. `"Dairy"`, `"Veggies"`, `"Pantry"`). |
 
 Ingredients are not stored as a flat list — they are always associated with a group, which keeps the fridge view organised as your inventory grows.
 

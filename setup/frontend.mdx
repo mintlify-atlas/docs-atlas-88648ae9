@@ -27,7 +27,7 @@ The Ocipe frontend is a React 19 + TypeScript application built with Vite. It co
   </Step>
 
   <Step title="Configure the API base URL">
-    The Axios instance in `src/api/axios.ts` defaults to the production backend:
+    The Axios instance in `src/api/axios.ts` hardcodes the production backend URL:
 
     ```typescript
     export const axiosInstance = axios.create({
@@ -38,18 +38,18 @@ The Ocipe frontend is a React 19 + TypeScript application built with Vite. It co
     });
     ```
 
-    To point at a locally running Django server instead, create a `.env.local` file in `ocipe/frontend/`:
-
-    ```bash
-    # ocipe/frontend/.env.local
-    VITE_API_BASE_URL=http://localhost:8000/api
-    ```
-
-    Then update `src/api/axios.ts` to read the variable:
+    To point at a locally running Django server, edit `src/api/axios.ts` and change the `baseURL` value directly:
 
     ```typescript
-    baseURL: import.meta.env.VITE_API_BASE_URL ?? "https://ocipe.onrender.com/api",
+    export const axiosInstance = axios.create({
+      baseURL: "http://localhost:8000/api",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
     ```
+
+    Remember to revert this change before committing, or restore the production URL before deploying.
   </Step>
 
   <Step title="Start the development server">
@@ -99,11 +99,7 @@ Vercel is the recommended host for the Ocipe frontend because it natively handle
 1. Push your repository to GitHub and sign in to [Vercel](https://vercel.com).
 2. Click **Add New → Project** and import your repository. Set the **Root Directory** to `frontend`.
 3. Vercel automatically detects the Vite framework — no build-command changes are needed.
-4. Under **Environment Variables**, add:
-   ```
-   VITE_API_BASE_URL = https://ocipe.onrender.com/api
-   ```
-   Replace the value with your own backend URL if you are self-hosting.
+4. If you are self-hosting the backend at a different URL, update the `baseURL` in `src/api/axios.ts` before building.
 5. Click **Deploy**. Vercel builds the project and publishes it to a `.vercel.app` domain.
 
 <Note>

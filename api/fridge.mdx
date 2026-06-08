@@ -1,5 +1,5 @@
 ---
-title: "REST API Endpoints for Fridge Inventory"
+title: "Ocipe REST API: Fridge Inventory Management Reference"
 sidebarTitle: "Fridge API"
 description: "Manage the user's fridge ingredient inventory via the Ocipe REST API. Add, update, delete ingredients and rename or delete groups."
 ---
@@ -74,7 +74,6 @@ Adds a new ingredient to the authenticated user's fridge. If an ingredient with 
 Returns the created `FridgeIngredient` object.
 
 <ResponseField name="id" type="integer">The FridgeIngredient row ID (used for update and delete operations).</ResponseField>
-<ResponseField name="name" type="string">The ingredient name (write-only during creation; not returned in the response body).</ResponseField>
 <ResponseField name="group" type="string">The group the ingredient was placed in.</ResponseField>
 
 ```bash
